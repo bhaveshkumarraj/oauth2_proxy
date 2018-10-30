@@ -670,6 +670,8 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 			log.Printf("%s %s", remoteAddr, err)
 		}
 	}
+	fmt.Println("---------------------")
+	fmt.Println(session)
 
 	if session == nil {
 		return http.StatusForbidden
@@ -685,7 +687,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	}
 	if p.PassUserHeaders {
 		req.Header["X-Forwarded-User"] = []string{session.User}
-		req.Header["X-Forwarded-Roles"] = []string{"admin,ops,user"}
+		req.Header["X-Forwarded-Roles"] = []string{"admin"}
 		if session.Email != "" {
 			req.Header["X-Forwarded-Email"] = []string{session.Email}
 		}
@@ -704,6 +706,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	} else {
 		rw.Header().Set("GAP-Auth", session.Email)
 	}
+	fmt.Println(req)
 	return http.StatusAccepted
 }
 
