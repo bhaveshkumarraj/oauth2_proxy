@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	api "../api"
+	api "github.com/bhaveshkumarraj/oauth2_proxy/api"
 )
 
 type IAM struct {
