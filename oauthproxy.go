@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -14,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"./providers"
 	"github.com/bitly/oauth2_proxy/cookie"
-	"github.com/bitly/oauth2_proxy/providers"
 	"github.com/mbland/hmacauth"
 )
 
@@ -65,6 +66,7 @@ type OAuthProxy struct {
 	PassBasicAuth       bool
 	SkipProviderButton  bool
 	PassUserHeaders     bool
+	PassRolesHeader     bool
 	BasicAuthPassword   string
 	PassAccessToken     bool
 	CookieCipher        *cookie.Cipher
@@ -73,6 +75,7 @@ type OAuthProxy struct {
 	compiledRegex       []*regexp.Regexp
 	templates           *template.Template
 	Footer              string
+	UserInfo            string
 }
 
 type UpstreamProxy struct {
@@ -201,6 +204,7 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 		SetXAuthRequest:    opts.SetXAuthRequest,
 		PassBasicAuth:      opts.PassBasicAuth,
 		PassUserHeaders:    opts.PassUserHeaders,
+		PassRolesHeader:    opts.PassRolesHeader,
 		BasicAuthPassword:  opts.BasicAuthPassword,
 		PassAccessToken:    opts.PassAccessToken,
 		SkipProviderButton: opts.SkipProviderButton,
@@ -618,6 +622,9 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	}
 	if session != nil && sessionAge > p.CookieRefresh && p.CookieRefresh != time.Duration(0) {
 		log.Printf("%s refreshing %s old session cookie for %s (refresh after %s)", remoteAddr, sessionAge, session, p.CookieRefresh)
+		log.Printf("Refreshing role permissions for user")
+		rp := p.provider.(providers.RoleProvider)
+		rp.SetUserRoles(session.Email)
 		saveSession = true
 	}
 
@@ -671,8 +678,6 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 			log.Printf("%s %s", remoteAddr, err)
 		}
 	}
-	fmt.Println("---------------------")
-	fmt.Println(session)
 
 	if session == nil {
 		return http.StatusForbidden
@@ -688,7 +693,6 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	}
 	if p.PassUserHeaders {
 		req.Header["X-Forwarded-User"] = []string{session.User}
-		req.Header["X-Forwarded-Roles"] = []string{"admin,user"}
 		if session.Email != "" {
 			req.Header["X-Forwarded-Email"] = []string{session.Email}
 		}
@@ -699,6 +703,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 			rw.Header().Set("X-Auth-Request-Email", session.Email)
 		}
 	}
+
 	if p.PassAccessToken && session.AccessToken != "" {
 		req.Header["X-Forwarded-Access-Token"] = []string{session.AccessToken}
 	}
@@ -707,6 +712,23 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	} else {
 		rw.Header().Set("GAP-Auth", session.Email)
 	}
+
+	if p.PassRolesHeader {
+		rp := p.provider.(providers.RoleProvider)
+		roles := rp.GetUserRoles()
+		var i = 0
+		if len(roles) < 1 && i < 1 {
+			i++
+			rp.SetUserRoles(session.Email)
+			refreshedRoles := rp.GetUserRoles()
+			req.Header["X-Forwarded-Roles"] = []string{refreshedRoles}
+			log.Printf("Refreshed user role data - %v", refreshedRoles)
+		} else {
+			req.Header["X-Forwarded-Roles"] = []string{roles}
+			log.Printf("User role data - %v", roles)
+		}
+	}
+
 	fmt.Println(req)
 	return http.StatusAccepted
 }
@@ -736,4 +758,21 @@ func (p *OAuthProxy) CheckBasicAuth(req *http.Request) (*providers.SessionState,
 		return &providers.SessionState{User: pair[0]}, nil
 	}
 	return nil, fmt.Errorf("%s not in HtpasswdFile", pair[0])
+}
+
+func (p *OAuthProxy) GetUserInfo(req *http.Request) {
+	p.UserInfo = "https://simenvops.ice.ibmcloud.com/oidc/endpoint/default/userinfo"
+	// Create a new request using http
+	request, err := http.NewRequest("GET", p.UserInfo, nil)
+	request.Header = req.Header
+
+	// Send req using http Client
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		log.Println("Error on response.\n[ERRO] -", err)
+	}
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	log.Println(string([]byte(body)))
 }

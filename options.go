@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bitly/oauth2_proxy/providers"
+	"./providers"
 	oidc "github.com/coreos/go-oidc"
 	"github.com/mbland/hmacauth"
 )
@@ -56,6 +56,7 @@ type Options struct {
 	BasicAuthPassword     string   `flag:"basic-auth-password" cfg:"basic_auth_password"`
 	PassAccessToken       bool     `flag:"pass-access-token" cfg:"pass_access_token"`
 	PassHostHeader        bool     `flag:"pass-host-header" cfg:"pass_host_header"`
+	PassRolesHeader       bool     `flag:"pass-roles-header" cfg:"pass_roles_header"`
 	SkipProviderButton    bool     `flag:"skip-provider-button" cfg:"skip_provider_button"`
 	PassUserHeaders       bool     `flag:"pass-user-headers" cfg:"pass_user_headers"`
 	SSLInsecureSkipVerify bool     `flag:"ssl-insecure-skip-verify" cfg:"ssl_insecure_skip_verify"`
@@ -108,6 +109,7 @@ func NewOptions() *Options {
 		SkipAuthPreflight:    false,
 		PassBasicAuth:        true,
 		PassUserHeaders:      true,
+		PassRolesHeader:      false,
 		PassAccessToken:      false,
 		PassHostHeader:       true,
 		ApprovalPrompt:       "force",
@@ -220,6 +222,14 @@ func (o *Options) Validate() error {
 				"cookie_expire (%s)",
 			o.CookieRefresh.String(),
 			o.CookieExpire.String()))
+	}
+
+	fmt.Println(o.provider.(providers.RoleProvider))
+
+	if o.PassRolesHeader {
+		if _, ok := o.provider.(providers.RoleProvider); !ok {
+			msgs = append(msgs, "Provider '"+o.provider.Data().ProviderName+"' does not support sending a roles header.")
+		}
 	}
 
 	if len(o.GoogleGroups) > 0 || o.GoogleAdminEmail != "" || o.GoogleServiceAccountJSON != "" {

@@ -40,7 +40,7 @@ func RequestJson(req *http.Request, v interface{}) error {
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	log.Printf("%d %s %s %s", resp.StatusCode, req.Method, req.URL, body)
+	// log.Printf("%d %s %s %s", resp.StatusCode, req.Method, req.URL, body)
 	if err != nil {
 		return err
 	}

@@ -203,6 +203,7 @@ Usage of oauth2_proxy:
   -pass-access-token: pass OAuth access_token to upstream via X-Forwarded-Access-Token header
   -pass-basic-auth: pass HTTP Basic Auth, X-Forwarded-User and X-Forwarded-Email information to upstream (default true)
   -pass-host-header: pass the request Host Header to upstream (default true)
+  -pass-roles-header=false: pass user's roles upstream via X-Forwarded-Roles header
   -pass-user-headers: pass X-Forwarded-User and X-Forwarded-Email information to upstream (default true)
   -profile-url string: Profile access endpoint
   -provider string: OAuth provider (default "google")

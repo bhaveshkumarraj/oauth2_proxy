@@ -17,6 +17,11 @@ type Provider interface {
 	CookieForSession(*SessionState, *cookie.Cipher) (string, error)
 }
 
+type RoleProvider interface {
+	GetUserRoles() string
+	SetUserRoles(string) (bool, error)
+}
+
 func New(provider string, p *ProviderData) Provider {
 	switch provider {
 	case "linkedin":

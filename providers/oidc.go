@@ -2,7 +2,9 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -13,7 +15,8 @@ import (
 type OIDCProvider struct {
 	*ProviderData
 
-	Verifier *oidc.IDTokenVerifier
+	Verifier  *oidc.IDTokenVerifier
+	userRoles []string
 }
 
 func NewOIDCProvider(p *ProviderData) *OIDCProvider {
@@ -82,4 +85,38 @@ func (p *OIDCProvider) RefreshSessionIfNeeded(s *SessionState) (bool, error) {
 	s.ExpiresOn = time.Now().Add(time.Second).Truncate(time.Second)
 	fmt.Printf("refreshed access token %s (expired on %s)\n", s, origExpiration)
 	return false, nil
+}
+
+func (p *OIDCProvider) SetUserRoles(emailId string) (bool, error) {
+
+	//TODO: replace these with config file
+	iam := IAM{
+		Host:      "",
+		AccountId: "",
+		ApiKey:    "",
+	}
+
+	// TODO: Need try catch here
+	iam.GetToken()
+	uamUsers, _ := iam.GetUsers()
+	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
+
+	iamId := emailIAMIdsMap[emailId]
+
+	if iamId == "" {
+		return false, errors.New("IAM roles doesn't exist.")
+	}
+
+	iamGroups, _ := iam.GetGroups(iamId)
+
+	var roles []string
+	for _, group := range iamGroups.Groups {
+		roles = append(roles, group.Name)
+	}
+	p.userRoles = roles
+	return true, nil
+}
+
+func (p *OIDCProvider) GetUserRoles() string {
+	return strings.Join(p.userRoles, ",")
 }
