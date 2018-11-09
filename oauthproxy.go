@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"./providers"
+	"github.com/bhaveshkumarraj/oauth2_proxy/providers"
 	"github.com/bitly/oauth2_proxy/cookie"
 	"github.com/mbland/hmacauth"
 )
