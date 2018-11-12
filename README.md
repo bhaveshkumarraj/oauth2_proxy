@@ -225,6 +225,10 @@ Usage of oauth2_proxy:
   -upstream value: the http url(s) of the upstream endpoint or file:// paths for static files. Routing is based on the path
   -validate-url string: Access token validation endpoint
   -version: print version string
+  -iam-host: IBM Identity Access Management (IAM) host name
+  -iam-account-id: IBM IAM account id
+  -iam-api-key: IBM IAM API Key
+  -uam-host: IBM Universal Account Management (UAM) host name
 ```
 
 See below for provider specific options

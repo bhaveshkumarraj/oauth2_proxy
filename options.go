@@ -80,6 +80,12 @@ type Options struct {
 
 	SignatureKey string `flag:"signature-key" cfg:"signature_key" env:"OAUTH2_PROXY_SIGNATURE_KEY"`
 
+	// configuration related to IBM IAM and UAM
+	IAMHost      string `flag:"iam-host" cfg:"iam_host" env:"IAM_HOST"`
+	IAMAccountId string `flag:"iam-account-id" cfg:"iam_account_id" env:"IAM_ACCOUNT_ID"`
+	IAMAPIKey    string `flag:"iam-api-key" cfg:"iam_api_key" env:"IAM_API_KEY"`
+	UAMHost      string `flag:"uam-host" cfg:"uam_host" env:"UAM_HOST"`
+
 	// internal values that are set after config validation
 	redirectURL   *url.URL
 	proxyURLs     []*url.URL

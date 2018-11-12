@@ -76,6 +76,10 @@ type OAuthProxy struct {
 	templates           *template.Template
 	Footer              string
 	UserInfo            string
+	IAMHost             string
+	IAMAccountId        string
+	IAMAPIKey           string
+	UAMHost             string
 }
 
 type UpstreamProxy struct {
@@ -211,6 +215,10 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 		CookieCipher:       cipher,
 		templates:          loadTemplates(opts.CustomTemplatesDir),
 		Footer:             opts.Footer,
+		IAMHost:            opts.IAMHost,
+		IAMAccountId:       opts.IAMAccountId,
+		IAMAPIKey:          opts.IAMAPIKey,
+		UAMHost:            opts.UAMHost,
 	}
 }
 
@@ -617,6 +625,15 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	remoteAddr := getRemoteAddr(req)
 
 	session, sessionAge, err := p.LoadCookiedSession(req)
+
+	iamConfig := map[string]string{
+		"Email":        session.Email,
+		"IAMHost":      p.IAMHost,
+		"IAMAccountId": p.IAMAccountId,
+		"IAMAPIKey":    p.IAMAPIKey,
+		"UAMHost":      p.UAMHost,
+	}
+
 	if err != nil {
 		log.Printf("%s %s", remoteAddr, err)
 	}
@@ -624,7 +641,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		log.Printf("%s refreshing %s old session cookie for %s (refresh after %s)", remoteAddr, sessionAge, session, p.CookieRefresh)
 		log.Printf("Refreshing role permissions for user")
 		rp := p.provider.(providers.RoleProvider)
-		rp.SetUserRoles(session.Email)
+		rp.SetUserRoles(iamConfig)
 		saveSession = true
 	}
 
@@ -719,7 +736,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		var i = 0
 		if len(roles) < 1 && i < 1 {
 			i++
-			rp.SetUserRoles(session.Email)
+			rp.SetUserRoles(iamConfig)
 			refreshedRoles := rp.GetUserRoles()
 			req.Header["X-Forwarded-Roles"] = []string{refreshedRoles}
 			log.Printf("Refreshed user role data - %v", refreshedRoles)

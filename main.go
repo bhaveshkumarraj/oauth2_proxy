@@ -82,6 +82,12 @@ func main() {
 
 	flagSet.String("signature-key", "", "GAP-Signature request signature key (algorithm:secretkey)")
 
+	// IBM config for OIDC goes here to get user's roles from IAM
+	flagSet.String("iam-host", "", "IBM Identity Access Management (IAM) host name")
+	flagSet.String("iam-account-id", "", "IBM IAM account id")
+	flagSet.String("iam-api-key", "", "IBM IAM API Key")
+	flagSet.String("uam-host", "", "IBM Universal Account Management (UAM) host name")
+
 	flagSet.Parse(os.Args[1:])
 
 	if *showVersion {

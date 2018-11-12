@@ -87,21 +87,20 @@ func (p *OIDCProvider) RefreshSessionIfNeeded(s *SessionState) (bool, error) {
 	return false, nil
 }
 
-func (p *OIDCProvider) SetUserRoles(emailId string) (bool, error) {
+func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) (bool, error) {
 
-	//TODO: replace these with config file
 	iam := IAM{
-		Host:      "",
-		AccountId: "",
-		ApiKey:    "",
+		Host:      iamConfig["IAMHost"],
+		AccountId: iamConfig["IAMAccountId"],
+		ApiKey:    iamConfig["IAMAPIKey"],
 	}
 
 	// TODO: Need try catch here
 	iam.GetToken()
-	uamUsers, _ := iam.GetUsers()
+	uamUsers, _ := iam.GetUsers(iamConfig["UAMHost"])
 	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
 
-	iamId := emailIAMIdsMap[emailId]
+	iamId := emailIAMIdsMap[iamConfig["Email"]]
 
 	if iamId == "" {
 		return false, errors.New("IAM roles doesn't exist.")

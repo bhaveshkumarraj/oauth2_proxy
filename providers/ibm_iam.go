@@ -164,8 +164,8 @@ func (idt *IAM) GetGroups(memberId string) (iamGroups IAMAccessGroupsResponse, e
 	return data, err
 }
 
-func (idt *IAM) GetUsers() (uamResponse UAMUsersResponse, err error) {
-	rootUrl := "https://accountmanagement.ng.bluemix.net"
+func (idt *IAM) GetUsers(host string) (uamResponse UAMUsersResponse, err error) {
+	rootUrl := "https://" + host
 	apiPath := rootUrl + "/v1/accounts/" + idt.AccountId + "/users"
 
 	req, err := idt.PrepareHttpRequest(apiPath)
