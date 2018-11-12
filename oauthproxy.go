@@ -624,15 +624,9 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	var saveSession, clearSession, revalidated bool
 	remoteAddr := getRemoteAddr(req)
 
-	session, sessionAge, err := p.LoadCookiedSession(req)
+	iamConfig := map[string]string{}
 
-	iamConfig := map[string]string{
-		"Email":        session.Email,
-		"IAMHost":      p.IAMHost,
-		"IAMAccountId": p.IAMAccountId,
-		"IAMAPIKey":    p.IAMAPIKey,
-		"UAMHost":      p.UAMHost,
-	}
+	session, sessionAge, err := p.LoadCookiedSession(req)
 
 	if err != nil {
 		log.Printf("%s %s", remoteAddr, err)
@@ -728,6 +722,14 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		rw.Header().Set("GAP-Auth", session.User)
 	} else {
 		rw.Header().Set("GAP-Auth", session.Email)
+
+		iamConfig = map[string]string{
+			"Email":        session.Email,
+			"IAMHost":      p.IAMHost,
+			"IAMAccountId": p.IAMAccountId,
+			"IAMAPIKey":    p.IAMAPIKey,
+			"UAMHost":      p.UAMHost,
+		}
 	}
 
 	if p.PassRolesHeader {
