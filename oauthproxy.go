@@ -80,6 +80,7 @@ type OAuthProxy struct {
 	IAMAccountId        string
 	IAMAPIKey           string
 	UAMHost             string
+	userRoles           []string
 }
 
 type UpstreamProxy struct {
@@ -821,4 +822,8 @@ func (p *OAuthProxy) SetUserRoles(iamConfig map[string]string) (bool, error) {
 	}
 	p.userRoles = roles
 	return true, nil
+}
+
+func (p *OAuthProxy) GetUserRoles() string {
+	return strings.Join(p.userRoles, ",")
 }
