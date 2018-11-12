@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bhaveshkumarraj/oauth2_proxy/providers"
+	providers "github.com/bhaveshkumarraj/oauth2_proxy/providers"
 	"github.com/bitly/oauth2_proxy/cookie"
 	"github.com/mbland/hmacauth"
 )
@@ -792,4 +792,33 @@ func (p *OAuthProxy) GetUserInfo(req *http.Request) {
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Println(string([]byte(body)))
+}
+
+func (p *OAuthProxy) SetUserRoles(iamConfig map[string]string) (bool, error) {
+
+	iam := providers.IAM{
+		Host:      iamConfig["IAMHost"],
+		AccountId: iamConfig["IAMAccountId"],
+		ApiKey:    iamConfig["IAMAPIKey"],
+	}
+
+	// TODO: Need try catch here
+	iam.GetToken()
+	uamUsers, _ := iam.GetUsers(iamConfig["UAMHost"])
+	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
+
+	iamId := emailIAMIdsMap[iamConfig["Email"]]
+
+	if iamId == "" {
+		return false, errors.New("IAM roles doesn't exist.")
+	}
+
+	iamGroups, _ := iam.GetGroups(iamId)
+
+	var roles []string
+	for _, group := range iamGroups.Groups {
+		roles = append(roles, group.Name)
+	}
+	p.userRoles = roles
+	return true, nil
 }
