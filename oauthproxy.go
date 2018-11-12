@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -776,54 +775,4 @@ func (p *OAuthProxy) CheckBasicAuth(req *http.Request) (*providers.SessionState,
 		return &providers.SessionState{User: pair[0]}, nil
 	}
 	return nil, fmt.Errorf("%s not in HtpasswdFile", pair[0])
-}
-
-func (p *OAuthProxy) GetUserInfo(req *http.Request) {
-	p.UserInfo = "https://simenvops.ice.ibmcloud.com/oidc/endpoint/default/userinfo"
-	// Create a new request using http
-	request, err := http.NewRequest("GET", p.UserInfo, nil)
-	request.Header = req.Header
-
-	// Send req using http Client
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	if err != nil {
-		log.Println("Error on response.\n[ERRO] -", err)
-	}
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	log.Println(string([]byte(body)))
-}
-
-func (p *OAuthProxy) SetUserRoles(iamConfig map[string]string) (bool, error) {
-
-	iam := providers.IAM{
-		Host:      iamConfig["IAMHost"],
-		AccountId: iamConfig["IAMAccountId"],
-		ApiKey:    iamConfig["IAMAPIKey"],
-	}
-
-	// TODO: Need try catch here
-	iam.GetToken()
-	uamUsers, _ := iam.GetUsers(iamConfig["UAMHost"])
-	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
-
-	iamId := emailIAMIdsMap[iamConfig["Email"]]
-
-	if iamId == "" {
-		return false, errors.New("IAM roles doesn't exist.")
-	}
-
-	iamGroups, _ := iam.GetGroups(iamId)
-
-	var roles []string
-	for _, group := range iamGroups.Groups {
-		roles = append(roles, group.Name)
-	}
-	p.userRoles = roles
-	return true, nil
-}
-
-func (p *OAuthProxy) GetUserRoles() string {
-	return strings.Join(p.userRoles, ",")
 }

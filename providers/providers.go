@@ -15,8 +15,6 @@ type Provider interface {
 	RefreshSessionIfNeeded(*SessionState) (bool, error)
 	SessionFromCookie(string, *cookie.Cipher) (*SessionState, error)
 	CookieForSession(*SessionState, *cookie.Cipher) (string, error)
-	GetUserRoles() string
-	SetUserRoles(map[string]string) (bool, error)
 }
 
 type RoleProvider interface {

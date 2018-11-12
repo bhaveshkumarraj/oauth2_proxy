@@ -2,7 +2,9 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -13,7 +15,8 @@ import (
 type OIDCProvider struct {
 	*ProviderData
 
-	Verifier *oidc.IDTokenVerifier
+	Verifier  *oidc.IDTokenVerifier
+	userRoles []string
 }
 
 func NewOIDCProvider(p *ProviderData) *OIDCProvider {
@@ -84,35 +87,35 @@ func (p *OIDCProvider) RefreshSessionIfNeeded(s *SessionState) (bool, error) {
 	return false, nil
 }
 
-// func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) (bool, error) {
+func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) (bool, error) {
 
-// 	iam := IAM{
-// 		Host:      iamConfig["IAMHost"],
-// 		AccountId: iamConfig["IAMAccountId"],
-// 		ApiKey:    iamConfig["IAMAPIKey"],
-// 	}
+	iam := IAM{
+		Host:      iamConfig["IAMHost"],
+		AccountId: iamConfig["IAMAccountId"],
+		ApiKey:    iamConfig["IAMAPIKey"],
+	}
 
-// 	// TODO: Need try catch here
-// 	iam.GetToken()
-// 	uamUsers, _ := iam.GetUsers(iamConfig["UAMHost"])
-// 	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
+	// TODO: Need try catch here
+	iam.GetToken()
+	uamUsers, _ := iam.GetUsers(iamConfig["UAMHost"])
+	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
 
-// 	iamId := emailIAMIdsMap[iamConfig["Email"]]
+	iamId := emailIAMIdsMap[iamConfig["Email"]]
 
-// 	if iamId == "" {
-// 		return false, errors.New("IAM roles doesn't exist.")
-// 	}
+	if iamId == "" {
+		return false, errors.New("IAM roles doesn't exist.")
+	}
 
-// 	iamGroups, _ := iam.GetGroups(iamId)
+	iamGroups, _ := iam.GetGroups(iamId)
 
-// 	var roles []string
-// 	for _, group := range iamGroups.Groups {
-// 		roles = append(roles, group.Name)
-// 	}
-// 	p.userRoles = roles
-// 	return true, nil
-// }
+	var roles []string
+	for _, group := range iamGroups.Groups {
+		roles = append(roles, group.Name)
+	}
+	p.userRoles = roles
+	return true, nil
+}
 
-// func (p *OIDCProvider) GetUserRoles() string {
-// 	return strings.Join(p.userRoles, ",")
-// }
+func (p *OIDCProvider) GetUserRoles() string {
+	return strings.Join(p.userRoles, ",")
+}
