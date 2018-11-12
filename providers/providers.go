@@ -19,7 +19,7 @@ type Provider interface {
 
 type RoleProvider interface {
 	GetUserRoles() string
-	SetUserRoles(string) (bool, error)
+	SetUserRoles(map[string]string) (bool, error)
 }
 
 func New(provider string, p *ProviderData) Provider {
