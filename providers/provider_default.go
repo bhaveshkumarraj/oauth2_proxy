@@ -1,121 +1,127 @@
 package providers
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 
 	"github.com/bhaveshkumarraj/oauth2_proxy/cookie"
 )
 
-type SessionState struct {
-	AccessToken  string
-	ExpiresOn    time.Time
-	RefreshToken string
-	Email        string
-	User         string
-	Roles        string
-}
-
-func (s *SessionState) IsExpired() bool {
-	if !s.ExpiresOn.IsZero() && s.ExpiresOn.Before(time.Now()) {
-		return true
-	}
-	return false
-}
-
-func (s *SessionState) String() string {
-	o := fmt.Sprintf("Session{%s", s.accountInfo())
-	if s.AccessToken != "" {
-		o += " token:true"
-	}
-	if !s.ExpiresOn.IsZero() {
-		o += fmt.Sprintf(" expires:%s", s.ExpiresOn)
-	}
-	if s.RefreshToken != "" {
-		o += " refresh_token:true"
-	}
-	return o + "}"
-}
-
-func (s *SessionState) EncodeSessionState(c *cookie.Cipher) (string, error) {
-	if c == nil || s.AccessToken == "" {
-		return s.accountInfo(), nil
-	}
-	return s.EncryptedString(c)
-}
-
-func (s *SessionState) accountInfo() string {
-	return fmt.Sprintf("email:%s user:%s roles:%s", s.Email, s.User, s.Roles)
-}
-
-func (s *SessionState) EncryptedString(c *cookie.Cipher) (string, error) {
-	var err error
-	if c == nil {
-		panic("error. missing cipher")
-	}
-	a := s.AccessToken
-	if a != "" {
-		if a, err = c.Encrypt(a); err != nil {
-			return "", err
-		}
-	}
-	r := s.RefreshToken
-	if r != "" {
-		if r, err = c.Encrypt(r); err != nil {
-			return "", err
-		}
-	}
-	return fmt.Sprintf("%s|%s|%d|%s", s.accountInfo(), a, s.ExpiresOn.Unix(), r), nil
-}
-
-func decodeSessionStatePlain(v string) (s *SessionState, err error) {
-	chunks := strings.Split(v, " ")
-	if len(chunks) != 2 {
-		return nil, fmt.Errorf("could not decode session state: expected 2 chunks got %d", len(chunks))
-	}
-
-	email := strings.TrimPrefix(chunks[0], "email:")
-	user := strings.TrimPrefix(chunks[1], "user:")
-	roles := strings.TrimPrefix(chunks[2], "roles:")
-	if user == "" {
-		user = strings.Split(email, "@")[0]
-	}
-
-	return &SessionState{User: user, Email: email, Roles: roles}, nil
-}
-
-func DecodeSessionState(v string, c *cookie.Cipher) (s *SessionState, err error) {
-	if c == nil {
-		return decodeSessionStatePlain(v)
-	}
-
-	chunks := strings.Split(v, "|")
-	if len(chunks) != 4 {
-		err = fmt.Errorf("invalid number of fields (got %d expected 4)", len(chunks))
+func (p *ProviderData) Redeem(redirectURL, code string) (s *SessionState, err error) {
+	if code == "" {
+		err = errors.New("missing code")
 		return
 	}
 
-	sessionState, err := decodeSessionStatePlain(chunks[0])
+	params := url.Values{}
+	params.Add("redirect_uri", redirectURL)
+	params.Add("client_id", p.ClientID)
+	params.Add("client_secret", p.ClientSecret)
+	params.Add("code", code)
+	params.Add("grant_type", "authorization_code")
+	if p.ProtectedResource != nil && p.ProtectedResource.String() != "" {
+		params.Add("resource", p.ProtectedResource.String())
+	}
+
+	var req *http.Request
+	req, err = http.NewRequest("POST", p.RedeemURL.String(), bytes.NewBufferString(params.Encode()))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	var resp *http.Response
+	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-
-	if chunks[1] != "" {
-		if sessionState.AccessToken, err = c.Decrypt(chunks[1]); err != nil {
-			return nil, err
-		}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return
 	}
 
-	ts, _ := strconv.Atoi(chunks[2])
-	sessionState.ExpiresOn = time.Unix(int64(ts), 0)
-
-	if chunks[3] != "" {
-		if sessionState.RefreshToken, err = c.Decrypt(chunks[3]); err != nil {
-			return nil, err
-		}
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("got %d from %q %s", resp.StatusCode, p.RedeemURL.String(), body)
+		return
 	}
 
-	return sessionState, nil
+	// blindly try json and x-www-form-urlencoded
+	var jsonResponse struct {
+		AccessToken string `json:"access_token"`
+	}
+	err = json.Unmarshal(body, &jsonResponse)
+	if err == nil {
+		s = &SessionState{
+			AccessToken: jsonResponse.AccessToken,
+		}
+		return
+	}
+
+	var v url.Values
+	v, err = url.ParseQuery(string(body))
+	if err != nil {
+		return
+	}
+	if a := v.Get("access_token"); a != "" {
+		s = &SessionState{AccessToken: a}
+	} else {
+		err = fmt.Errorf("no access token found %s", body)
+	}
+	return
+}
+
+// GetLoginURL with typical oauth parameters
+func (p *ProviderData) GetLoginURL(redirectURI, state string) string {
+	var a url.URL
+	a = *p.LoginURL
+	params, _ := url.ParseQuery(a.RawQuery)
+	params.Set("redirect_uri", redirectURI)
+	params.Set("approval_prompt", p.ApprovalPrompt)
+	params.Add("scope", p.Scope)
+	params.Set("client_id", p.ClientID)
+	params.Set("response_type", "code")
+	params.Add("state", state)
+	a.RawQuery = params.Encode()
+	return a.String()
+}
+
+// CookieForSession serializes a session state for storage in a cookie
+func (p *ProviderData) CookieForSession(s *SessionState, c *cookie.Cipher) (string, error) {
+	return s.EncodeSessionState(c)
+}
+
+// SessionFromCookie deserializes a session from a cookie value
+func (p *ProviderData) SessionFromCookie(v string, c *cookie.Cipher) (s *SessionState, err error) {
+	return DecodeSessionState(v, c)
+}
+
+func (p *ProviderData) GetEmailAddress(s *SessionState) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+// GetUserName returns the Account username
+func (p *ProviderData) GetUserName(s *SessionState) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+// ValidateGroup validates that the provided email exists in the configured provider
+// email group(s).
+func (p *ProviderData) ValidateGroup(email string) bool {
+	return true
+}
+
+func (p *ProviderData) ValidateSessionState(s *SessionState) bool {
+	return validateToken(p, s.AccessToken, nil)
+}
+
+// RefreshSessionIfNeeded
+func (p *ProviderData) RefreshSessionIfNeeded(s *SessionState) (bool, error) {
+	return false, nil
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bhaveshkumarraj/oauth2_proxy/cookie"
+	"github.com/bitly/oauth2_proxy/cookie"
 )
 
 type SessionState struct {
@@ -15,6 +15,7 @@ type SessionState struct {
 	RefreshToken string
 	Email        string
 	User         string
+	Roles        string
 }
 
 func (s *SessionState) IsExpired() bool {
@@ -46,7 +47,7 @@ func (s *SessionState) EncodeSessionState(c *cookie.Cipher) (string, error) {
 }
 
 func (s *SessionState) accountInfo() string {
-	return fmt.Sprintf("email:%s user:%s", s.Email, s.User)
+	return fmt.Sprintf("email:%s user:%s roles:%s", s.Email, s.User, s.Roles)
 }
 
 func (s *SessionState) EncryptedString(c *cookie.Cipher) (string, error) {
@@ -77,11 +78,12 @@ func decodeSessionStatePlain(v string) (s *SessionState, err error) {
 
 	email := strings.TrimPrefix(chunks[0], "email:")
 	user := strings.TrimPrefix(chunks[1], "user:")
+	roles := strings.TrimPrefix(chunks[2], "roles:")
 	if user == "" {
 		user = strings.Split(email, "@")[0]
 	}
 
-	return &SessionState{User: user, Email: email}, nil
+	return &SessionState{User: user, Email: email, Roles: roles}, nil
 }
 
 func DecodeSessionState(v string, c *cookie.Cipher) (s *SessionState, err error) {
