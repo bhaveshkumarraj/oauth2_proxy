@@ -15,7 +15,7 @@ type SessionState struct {
 	RefreshToken string
 	Email        string
 	User         string
-	Roles        string
+	Roles        []string
 }
 
 func (s *SessionState) IsExpired() bool {
@@ -72,18 +72,19 @@ func (s *SessionState) EncryptedString(c *cookie.Cipher) (string, error) {
 
 func decodeSessionStatePlain(v string) (s *SessionState, err error) {
 	chunks := strings.Split(v, " ")
-	if len(chunks) != 2 {
-		return nil, fmt.Errorf("could not decode session state: expected 2 chunks got %d", len(chunks))
+	if len(chunks) != 3 {
+		return nil, fmt.Errorf("could not decode session state: expected 3 chunks got %d", len(chunks))
 	}
 
 	email := strings.TrimPrefix(chunks[0], "email:")
 	user := strings.TrimPrefix(chunks[1], "user:")
-	roles := strings.TrimPrefix(chunks[2], "roles:")
+	roles := strings.TrimPrefix(chunks[2], "roles:[") //convert string to array of string
+	roles = strings.TrimSuffix(roles, "]")
+
 	if user == "" {
 		user = strings.Split(email, "@")[0]
 	}
-
-	return &SessionState{User: user, Email: email, Roles: roles}, nil
+	return &SessionState{User: user, Email: email, Roles: []string{roles}}, nil
 }
 
 func DecodeSessionState(v string, c *cookie.Cipher) (s *SessionState, err error) {

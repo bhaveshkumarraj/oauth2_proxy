@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/url"
+	"strings"
 
 	api "github.com/bhaveshkumarraj/oauth2_proxy/api"
 )
@@ -189,7 +190,7 @@ func (idt *IAM) GetUsers(host string) (uamResponse UAMUsersResponse, err error) 
 func (idt *IAM) MapEmailsToIAMIds(uamResponse UAMUsersResponse) map[string]string {
 	emailIAMIdsMap := make(map[string]string)
 	for _, resource := range uamResponse.Resources {
-		emailIAMIdsMap[resource.Entity.Email] = resource.Entity.IAMId
+		emailIAMIdsMap[strings.ToLower(resource.Entity.Email)] = resource.Entity.IAMId
 	}
 	return emailIAMIdsMap
 }

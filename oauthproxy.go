@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/bhaveshkumarraj/oauth2_proxy/cookie"
-	providers "github.com/bhaveshkumarraj/oauth2_proxy/providers"
+	"github.com/bhaveshkumarraj/oauth2_proxy/providers"
 	"github.com/mbland/hmacauth"
 )
 
@@ -582,6 +582,16 @@ func (p *OAuthProxy) OAuthCallback(rw http.ResponseWriter, req *http.Request) {
 	// set cookie, or deny
 	if p.Validator(session.Email) && p.provider.ValidateGroup(session.Email) {
 		log.Printf("%s authentication complete %s", remoteAddr, session)
+
+		// get user roles here
+		rp := p.provider.(providers.RoleProvider)
+		iamConfig := p.GetIAMConfig(session.Email)
+		roles, _ := rp.SetUserRoles(iamConfig)
+
+		if len(roles) > 0 {
+			session.Roles = roles
+		}
+
 		err := p.SaveSession(rw, req, session)
 		if err != nil {
 			log.Printf("%s %s", remoteAddr, err)
@@ -636,7 +646,9 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		log.Printf("%s refreshing %s old session cookie for %s (refresh after %s)", remoteAddr, sessionAge, session, p.CookieRefresh)
 		log.Printf("Refreshing role permissions for user")
 		rp := p.provider.(providers.RoleProvider)
+		iamConfig = p.GetIAMConfig(session.Email)
 		roles, _ = rp.SetUserRoles(iamConfig)
+		session.Roles = roles
 		saveSession = true
 	}
 
@@ -723,23 +735,23 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		rw.Header().Set("GAP-Auth", session.User)
 	} else {
 		rw.Header().Set("GAP-Auth", session.Email)
-
-		iamConfig = map[string]string{
-			"Email":        session.Email,
-			"IAMHost":      p.IAMHost,
-			"IAMAccountId": p.IAMAccountId,
-			"IAMAPIKey":    p.IAMAPIKey,
-			"UAMHost":      p.UAMHost,
-		}
+		iamConfig = p.GetIAMConfig(session.Email)
 	}
 
 	if p.PassRolesHeader {
-		rp := p.provider.(providers.RoleProvider)
-		if len(roles) == 0 {
+		if len(session.Roles) == 0 {
+			rp := p.provider.(providers.RoleProvider)
 			roles, _ = rp.SetUserRoles(iamConfig)
+			session.Roles = roles
+			err := p.SaveSession(rw, req, session)
+			if err != nil {
+				log.Printf("%s", err)
+			}
+			fmt.Println("---------inside passHeade", session.Roles)
 		}
-		req.Header["X-Forwarded-Roles"] = roles
-		log.Printf("User role data - %v", roles)
+		fmt.Println("---------inside passHeade2", session.Roles)
+		req.Header["X-Forwarded-Roles"] = session.Roles
+		log.Printf("User role data - %v", session.Roles)
 	}
 
 	fmt.Println(req)
@@ -771,4 +783,14 @@ func (p *OAuthProxy) CheckBasicAuth(req *http.Request) (*providers.SessionState,
 		return &providers.SessionState{User: pair[0]}, nil
 	}
 	return nil, fmt.Errorf("%s not in HtpasswdFile", pair[0])
+}
+
+func (p *OAuthProxy) GetIAMConfig(email string) map[string]string {
+	return map[string]string{
+		"Email":        strings.ToLower(email),
+		"IAMHost":      p.IAMHost,
+		"IAMAccountId": p.IAMAccountId,
+		"IAMAPIKey":    p.IAMAPIKey,
+		"UAMHost":      p.UAMHost,
+	}
 }

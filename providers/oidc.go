@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -15,8 +14,7 @@ import (
 type OIDCProvider struct {
 	*ProviderData
 
-	Verifier  *oidc.IDTokenVerifier
-	userRoles []string
+	Verifier *oidc.IDTokenVerifier
 }
 
 func NewOIDCProvider(p *ProviderData) *OIDCProvider {
@@ -99,7 +97,6 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) ([]string, erro
 	iam.GetToken()
 	uamUsers, _ := iam.GetUsers(iamConfig["UAMHost"])
 	emailIAMIdsMap := iam.MapEmailsToIAMIds(uamUsers)
-
 	iamId := emailIAMIdsMap[iamConfig["Email"]]
 
 	if iamId == "" {
@@ -117,5 +114,6 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) ([]string, erro
 }
 
 func (p *OIDCProvider) GetUserRoles() string {
-	return strings.Join(p.userRoles, ",")
+	// return strings.Join(p.userRoles, ",")
+	return ""
 }
