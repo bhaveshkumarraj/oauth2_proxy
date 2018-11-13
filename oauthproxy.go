@@ -625,6 +625,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 	remoteAddr := getRemoteAddr(req)
 
 	iamConfig := map[string]string{}
+	var roles []string
 
 	session, sessionAge, err := p.LoadCookiedSession(req)
 
@@ -635,7 +636,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		log.Printf("%s refreshing %s old session cookie for %s (refresh after %s)", remoteAddr, sessionAge, session, p.CookieRefresh)
 		log.Printf("Refreshing role permissions for user")
 		rp := p.provider.(providers.RoleProvider)
-		rp.SetUserRoles(iamConfig)
+		roles, _ = rp.SetUserRoles(iamConfig)
 		saveSession = true
 	}
 
@@ -734,18 +735,11 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 
 	if p.PassRolesHeader {
 		rp := p.provider.(providers.RoleProvider)
-		roles := rp.GetUserRoles()
-		var i = 0
-		if len(roles) < 1 && i < 1 {
-			i++
-			rp.SetUserRoles(iamConfig)
-			refreshedRoles := rp.GetUserRoles()
-			req.Header["X-Forwarded-Roles"] = []string{refreshedRoles}
-			log.Printf("Refreshed user role data - %v", refreshedRoles)
-		} else {
-			req.Header["X-Forwarded-Roles"] = []string{roles}
-			log.Printf("User role data - %v", roles)
+		if len(roles) == 0 {
+			roles, _ = rp.SetUserRoles(iamConfig)
 		}
+		req.Header["X-Forwarded-Roles"] = roles
+		log.Printf("User role data - %v", roles)
 	}
 
 	fmt.Println(req)

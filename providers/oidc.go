@@ -87,7 +87,7 @@ func (p *OIDCProvider) RefreshSessionIfNeeded(s *SessionState) (bool, error) {
 	return false, nil
 }
 
-func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) (bool, error) {
+func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) ([]string, error) {
 
 	iam := IAM{
 		Host:      iamConfig["IAMHost"],
@@ -103,7 +103,7 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) (bool, error) {
 	iamId := emailIAMIdsMap[iamConfig["Email"]]
 
 	if iamId == "" {
-		return false, errors.New("IAM roles doesn't exist.")
+		return nil, errors.New("IAM roles doesn't exist.")
 	}
 
 	iamGroups, _ := iam.GetGroups(iamId)
@@ -112,8 +112,8 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) (bool, error) {
 	for _, group := range iamGroups.Groups {
 		roles = append(roles, group.Name)
 	}
-	p.userRoles = roles
-	return true, nil
+
+	return roles, nil
 }
 
 func (p *OIDCProvider) GetUserRoles() string {
