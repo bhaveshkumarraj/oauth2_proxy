@@ -106,6 +106,11 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) ([]string, erro
 	iamGroups, _ := iam.GetGroups(iamId)
 
 	var roles []string
+
+	if len(iamGroups.Groups) == 0 {
+		return []string{"unknown"}, nil
+	}
+
 	for _, group := range iamGroups.Groups {
 		roles = append(roles, group.Name)
 	}
