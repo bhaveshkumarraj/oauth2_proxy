@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -115,6 +116,7 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) ([]string, erro
 		roles = append(roles, group.Name)
 	}
 
+	log.Printf("Setting user roles: %s", roles)
 	return roles, nil
 }
 

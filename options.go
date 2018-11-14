@@ -230,8 +230,6 @@ func (o *Options) Validate() error {
 			o.CookieExpire.String()))
 	}
 
-	fmt.Println(o.provider.(providers.RoleProvider))
-
 	if o.PassRolesHeader {
 		if _, ok := o.provider.(providers.RoleProvider); !ok {
 			msgs = append(msgs, "Provider '"+o.provider.Data().ProviderName+"' does not support sending a roles header.")

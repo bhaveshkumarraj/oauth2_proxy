@@ -747,14 +747,10 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 			if err != nil {
 				log.Printf("%s", err)
 			}
-			fmt.Println("---------inside passHeade", session.Roles)
 		}
-		fmt.Println("---------inside passHeade2", session.Roles)
 		req.Header["X-Forwarded-Roles"] = session.Roles
 		log.Printf("User role data - %v", session.Roles)
 	}
-
-	fmt.Println(req)
 	return http.StatusAccepted
 }
 
