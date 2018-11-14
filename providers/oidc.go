@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -116,11 +117,12 @@ func (p *OIDCProvider) SetUserRoles(iamConfig map[string]string) ([]string, erro
 		roles = append(roles, group.Name)
 	}
 
-	log.Printf("Setting user roles: %s", roles)
-	return roles, nil
+	//appending values of roles with comma and creating an array with just one value in roles array
+	roleStr := []string{strings.Join(roles, ",")}
+	log.Printf("Setting user roles: %s", roleStr)
+	return roleStr, nil
 }
 
 func (p *OIDCProvider) GetUserRoles() string {
-	// return strings.Join(p.userRoles, ",")
 	return ""
 }

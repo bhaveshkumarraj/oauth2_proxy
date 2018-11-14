@@ -749,7 +749,6 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 			}
 		}
 		req.Header["X-Forwarded-Roles"] = session.Roles
-		log.Printf("User role data - %v", session.Roles)
 	}
 	return http.StatusAccepted
 }
