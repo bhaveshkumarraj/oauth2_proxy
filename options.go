@@ -68,6 +68,7 @@ type Options struct {
 	Provider          string `flag:"provider" cfg:"provider"`
 	OIDCIssuerURL     string `flag:"oidc-issuer-url" cfg:"oidc_issuer_url"`
 	LoginURL          string `flag:"login-url" cfg:"login_url"`
+	JWKSURL           string `flag:"jwks-url" cfg:"jwks_url"`
 	RedeemURL         string `flag:"redeem-url" cfg:"redeem_url"`
 	ProfileURL        string `flag:"profile-url" cfg:"profile_url"`
 	ProtectedResource string `flag:"resource" cfg:"resource"`
@@ -157,21 +158,31 @@ func (o *Options) Validate() error {
 			"\n      use email-domain=* to authorize all email addresses")
 	}
 
-	if o.OIDCIssuerURL != "" {
-		// Configure discoverable provider data.
-		provider, err := oidc.NewProvider(context.Background(), o.OIDCIssuerURL)
-		if err != nil {
-			return err
-		}
-		o.oidcVerifier = provider.Verifier(&oidc.Config{
-			ClientID: o.ClientID,
-		})
-		o.LoginURL = provider.Endpoint().AuthURL
-		o.RedeemURL = provider.Endpoint().TokenURL
-		if o.Scope == "" {
-			o.Scope = "openid email profile"
-		}
-	}
+	//TODO: uncomment block below when .well-known configuration of w3id works
+	// if o.OIDCIssuerURL != "" {
+	// 	// Configure discoverable provider data.
+	// 	provider, err := oidc.NewProvider(context.Background(), o.OIDCIssuerURL)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	o.oidcVerifier = provider.Verifier(&oidc.Config{
+	// 		ClientID: o.ClientID,
+	// 	})
+	// 	o.LoginURL = provider.Endpoint().AuthURL
+	// 	o.RedeemURL = provider.Endpoint().TokenURL
+	// 	if o.Scope == "" {
+	// 		o.Scope = "openid email profile"
+	// 	}
+	// }
+
+	//TODO: remove this when .well-known configuration of w3id works
+	manualKeySet := oidc.NewRemoteKeySet(context.Background(), o.JWKSURL)
+	o.oidcVerifier = oidc.NewVerifier(o.OIDCIssuerURL, manualKeySet, &oidc.Config{
+		ClientID: o.ClientID,
+	})
+	o.LoginURL = o.LoginURL
+	o.RedeemURL = o.RedeemURL
+	o.Scope = o.Scope
 
 	o.redirectURL, msgs = parseURL(o.RedirectURL, "redirect", msgs)
 
