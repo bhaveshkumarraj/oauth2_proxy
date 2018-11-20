@@ -625,6 +625,8 @@ func (p *OAuthProxy) Proxy(rw http.ResponseWriter, req *http.Request) {
 		} else {
 			p.SignInPage(rw, req, http.StatusForbidden)
 		}
+	} else if status == http.StatusUnauthorized {
+		http.Error(rw, "unauthorized request", http.StatusUnauthorized)
 	} else {
 		p.serveMux.ServeHTTP(rw, req)
 	}
@@ -682,6 +684,12 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		session = nil
 		saveSession = false
 		clearSession = true
+	}
+
+	if session != nil && session.Email != "" && !strings.HasSuffix(strings.ToLower(session.Email), "ibm.com") {
+		log.Printf("%s user not from IBM organisation %s", remoteAddr, session)
+		p.ClearSessionCookie(rw, req)
+		return http.StatusUnauthorized
 	}
 
 	if saveSession && session != nil {
