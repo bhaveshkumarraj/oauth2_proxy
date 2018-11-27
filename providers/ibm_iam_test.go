@@ -53,6 +53,11 @@ func TestIAMRoles(t *testing.T) {
 	assert.Equal(t, "refreshtoken", p.RefreshToken)
 	assert.Equal(t, 200, p.TokenExpiration)
 
+	//test PrepareHttpRequest
+	httpRequest, err := p.PrepareHttpRequest("https://localhost/identity/token")
+	assert.Equal(t, err, nil)
+	assert.Equal(t, "accesstoken", httpRequest.Header.Get("Authorization"))
+
 	// test getGroups
 	var memberId string = "IBMidxxxxxx"
 	httpmock.Activate()
@@ -76,7 +81,7 @@ func TestIAMRoles(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	httpmock.RegisterResponder("GET", "https://localhost/v1/accounts/xxxx/users",
-		httpmock.NewStringResponder(200, `{"total_results": 150, "next_url": "/v1/accounts/accountid/users?_start=randomstr",
+		httpmock.NewStringResponder(200, `{"total_results": 50, "next_url": "",
 											"limit": 100, "first_url": "/v1/accounts/accountid/users", "resources": [{"metadata":
 											{"url": "/v1/accounts/accountid/users/randomstr", "created_at": "2018-04-11T10:15:43.880Z",
 											 "updated_at": "2018-11-04T21:54:29.859Z", "verified_at": "", "linkages": [{"origin": "UAA",
@@ -91,7 +96,7 @@ func TestIAMRoles(t *testing.T) {
 	assert.Equal(t, 1, len(uamResponse.Resources))
 	assert.Equal(t, "test.test@ibm.com", uamResponse.Resources[0].Entity.Email)
 	assert.Equal(t, "IBMid-randomstr", uamResponse.Resources[0].Entity.IAMId)
-	assert.Equal(t, 150, uamResponse.TotalResults)
+	assert.Equal(t, 50, uamResponse.TotalResults)
 
 	//test MapEmailsToIAMIds
 	emailIAMIdsMap := p.MapEmailsToIAMIds(uamResponse)
