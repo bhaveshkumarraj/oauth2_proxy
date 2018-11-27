@@ -93,7 +93,7 @@ func TestSessionStateSerializationNoCipher(t *testing.T) {
 	}
 	encoded, err := s.EncodeSessionState(nil)
 	assert.Equal(t, nil, err)
-	expected := fmt.Sprintf("email:%s user:", s.Email)
+	expected := fmt.Sprintf("email:%s user: roles:[]", s.Email)
 	assert.Equal(t, expected, encoded)
 
 	// only email should have been serialized
@@ -115,7 +115,31 @@ func TestSessionStateSerializationNoCipherWithUser(t *testing.T) {
 	}
 	encoded, err := s.EncodeSessionState(nil)
 	assert.Equal(t, nil, err)
-	expected := fmt.Sprintf("email:%s user:%s", s.Email, s.User)
+	expected := fmt.Sprintf("email:%s user:%s roles:[]", s.Email, s.User)
+	assert.Equal(t, expected, encoded)
+
+	// only email should have been serialized
+	ss, err := DecodeSessionState(encoded, nil)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, s.User, ss.User)
+	assert.Equal(t, s.Email, ss.Email)
+	assert.Equal(t, "", ss.AccessToken)
+	assert.Equal(t, "", ss.RefreshToken)
+}
+
+func TestSessionStateSerializationNoCipherWithUserRoles(t *testing.T) {
+	roles := []string{"Editor"}
+	s := &SessionState{
+		User:         "just-user",
+		Email:        "user@domain.com",
+		AccessToken:  "token1234",
+		ExpiresOn:    time.Now().Add(time.Duration(1) * time.Hour),
+		RefreshToken: "refresh4321",
+		Roles:        roles,
+	}
+	encoded, err := s.EncodeSessionState(nil)
+	assert.Equal(t, nil, err)
+	expected := fmt.Sprintf("email:%s user:%s roles:%s", s.Email, s.User, s.Roles)
 	assert.Equal(t, expected, encoded)
 
 	// only email should have been serialized
@@ -128,15 +152,17 @@ func TestSessionStateSerializationNoCipherWithUser(t *testing.T) {
 }
 
 func TestSessionStateAccountInfo(t *testing.T) {
+	roles := []string{"Editor"}
 	s := &SessionState{
 		Email: "user@domain.com",
 		User:  "just-user",
+		Roles: roles,
 	}
-	expected := fmt.Sprintf("email:%v user:%v", s.Email, s.User)
+	expected := fmt.Sprintf("email:%v user:%v roles:%s", s.Email, s.User, s.Roles)
 	assert.Equal(t, expected, s.accountInfo())
 
 	s.Email = ""
-	expected = fmt.Sprintf("email:%v user:%v", s.Email, s.User)
+	expected = fmt.Sprintf("email:%v user:%v roles:%s", s.Email, s.User, s.Roles)
 	assert.Equal(t, expected, s.accountInfo())
 }
 

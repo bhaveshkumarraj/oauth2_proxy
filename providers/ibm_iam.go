@@ -23,9 +23,9 @@ type IAMResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	Expiration   int    `json:"expiration"`
-	TokenType    string `"json:token_type"`
-	ExpiresIn    int    `"json:expires_in"`
-	Scope        string `"json:scope"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope"`
 }
 
 type IAMGroup struct {
@@ -36,8 +36,8 @@ type IAMGroup struct {
 }
 
 type IAMAccessGroupsResponse struct {
-	Offset      int               `"json:offset"`
-	Limit       int               `"json:limit"`
+	Offset      int               `json:"offset"`
+	Limit       int               `json:"limit"`
 	TotalCount  int               `json:"total_count"`
 	First       map[string]string `json:"first"`
 	Last        map[string]string `json:"last"`
@@ -121,7 +121,7 @@ func (idt *IAM) GetToken() (err error) {
 	var req *http.Request
 	req, err = http.NewRequest("POST", token_url, bytes.NewBufferString(params.Encode()))
 	if err != nil {
-		return
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
